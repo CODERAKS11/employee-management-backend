@@ -30,3 +30,9 @@ class DepartmentSerializer(serializers.ModelSerializer):
             )
             
         return value
+
+    def validate_description(self, value):
+        value = value.strip()
+        if len(value) < 10:
+            raise serializers.ValidationError("Department description must be at least 10 characters.")
+        return value
