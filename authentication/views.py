@@ -75,3 +75,32 @@ def change_password(request):
         "message": "Password changed successfully.",
         "token": token.key,
     })
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_stats(request):
+    from employee.models import Employee
+    from email_service.models import EmailLog
+    from django.utils import timezone
+
+    # Total synced employees
+    total_employees = Employee.objects.count()
+    
+    # Emails sent today (local time / server time)
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    sent_today = EmailLog.objects.filter(sent_at__gte=today_start, status='Sent').count()
+    
+    # Delivery rate: (Sent emails / Total emails) * 100
+    total_emails = EmailLog.objects.count()
+    if total_emails > 0:
+        sent_emails = EmailLog.objects.filter(status='Sent').count()
+        delivery_rate = f"{int((sent_emails / total_emails) * 100)}%"
+    else:
+        delivery_rate = "100%"
+        
+    return Response({
+        "employees_synced": total_employees,
+        "sent_today": sent_today,
+        "delivery_rate": delivery_rate
+    })

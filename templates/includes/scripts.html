@@ -41,6 +41,7 @@
     // Initialize elements on load
     $(document).ready(function () {
         lucide.createIcons();
+        loadPublicStats();
         checkAuthState();
         setupNavigationHandlers();
         setupUiHandlers();
@@ -50,6 +51,21 @@
         setupTemplateHandlers();
         loadTemplates(null, false);
     });
+
+    function loadPublicStats() {
+        $.ajax({
+            url: API_BASE + 'public-stats/',
+            type: 'GET',
+            success: function(data) {
+                $('#statEmployeesSynced').text(data.employees_synced);
+                $('#statSentToday').text(data.sent_today);
+                $('#statDeliveryRate').text(data.delivery_rate);
+            },
+            error: function() {
+                console.error("Failed to retrieve public statistics.");
+            }
+        });
+    }
 
     function getDataTable(selector, customOptions = {}) {
         if ($.fn.DataTable.isDataTable(selector)) {
