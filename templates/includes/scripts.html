@@ -1211,18 +1211,33 @@
         const fileInput = document.getElementById('emailAttachment');
         const attachmentFile = (fileInput && fileInput.files.length > 0) ? fileInput.files[0] : null;
 
-        for (let i = 0; i < total; i++) {
-            const empId = selectedEmployeeIds[i];
+        let processedCount = 0;
+
+        function updateProgress(processed) {
+            const b = Swal.getHtmlContainer() ? Swal.getHtmlContainer().querySelector('b') : null;
+            if (b) {
+                b.textContent = processed;
+            }
+        }
+
+        const emailPromises = selectedEmployeeIds.map(async (empId) => {
             const emp = globalEmployees.find(e => e.id === empId);
             if (!emp) {
-                updateProgress(i + 1);
-                continue;
+                processedCount++;
+                updateProgress(processedCount);
+                return;
             }
 
-            // Render dynamic text templates fields logic
-            let renderedSubject = subjectTpl.replace(/{{first_name}}/g, emp.first_name).replace(/{{last_name}}/g, emp.last_name).replace(/{{employee_id}}/g, emp.employee_id);
+            // Render placeholders
+            const renderedSubject = subjectTpl
+                .replace(/{{first_name}}/g, emp.first_name)
+                .replace(/{{last_name}}/g, emp.last_name)
+                .replace(/{{employee_id}}/g, emp.employee_id);
 
-            let renderedMessage = messageTpl.replace(/{{first_name}}/g, emp.first_name).replace(/{{last_name}}/g, emp.last_name).replace(/{{employee_id}}/g, emp.employee_id);
+            const renderedMessage = messageTpl
+                .replace(/{{first_name}}/g, emp.first_name)
+                .replace(/{{last_name}}/g, emp.last_name)
+                .replace(/{{employee_id}}/g, emp.employee_id);
 
             const formData = new FormData();
             formData.append('employee', emp.id);
@@ -1234,20 +1249,28 @@
             }
 
             try {
-                await $.ajax({
+                const response = await $.ajax({
                     url: API_BASE + 'emails/',
                     type: 'POST',
                     data: formData,
                     processData: false,
                     contentType: false
                 });
-                successCount++;
+
+                if (response && response.status === 'Sent') {
+                    successCount++;
+                } else {
+                    console.error("Transmission failed for " + emp.email + ": status is " + (response ? response.status : 'unknown'));
+                }
             } catch (err) {
                 console.error("Failed to send email to " + emp.email, err);
+            } finally {
+                processedCount++;
+                updateProgress(processedCount);
             }
+        });
 
-            updateProgress(i + 1);
-        }
+        await Promise.all(emailPromises);
 
         Swal.close();
         Swal.fire({
@@ -1261,13 +1284,6 @@
         updateSelectedCountUI();
         $('.employee-checkbox').prop('checked', false);
         $('#formSendMail')[0].reset();
-
-        function updateProgress(processed) {
-            const b = Swal.getHtmlContainer() ? Swal.getHtmlContainer().querySelector('b') : null;
-            if (b) {
-                b.textContent = processed;
-            }
-        }
     }
 
     // ==================== HISTORY LOGS MODULE ====================
