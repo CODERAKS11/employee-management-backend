@@ -42,9 +42,6 @@ class Employee(models.Model):
         HR = "HR", "HR Executive"
         INTERN = "INT", "Intern"
         OTHER = "OTH", "Other"
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     # employee_id: business-facing ID, e.g. EMP001 — enforced at DB AND serializer level
     employee_id = models.CharField(
         max_length=20,
