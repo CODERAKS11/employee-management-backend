@@ -136,7 +136,10 @@ class EmailLogViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"[email] SMTP connection failed: {e}", flush=True)
             logger.exception(f"Could not open SMTP connection: {e}")
-            return Response({'error': 'SMTP connection failed. Check email settings.'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({
+                'error': 'SMTP connection failed. Check email settings.',
+                'details': str(e)
+            }, status=status.HTTP_502_BAD_GATEWAY)
 
         for emp_id in employee_ids:
             try:

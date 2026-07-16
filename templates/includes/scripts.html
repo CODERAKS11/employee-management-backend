@@ -1154,9 +1154,12 @@
         } catch (err) {
             console.error("Batch dispatch failed", err);
             Swal.close();
+            const errMsg = (err.responseJSON && err.responseJSON.details) ? 
+                `Error: ${err.responseJSON.details}` : 
+                'An error occurred during the batch transmission. Check SMTP settings.';
             Swal.fire({
                 title: 'Transmission Failed',
-                text: 'An error occurred during the batch transmission. Check SMTP settings.',
+                text: errMsg,
                 icon: 'error'
             });
         }
