@@ -149,7 +149,5 @@ EMAIL_TIMEOUT = 20  # Fail fast on Render (30s proxy limit)
 # Console fallback if credentials are not provided
 if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    print(f"[WARNING] EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not set. Emails will only print to console, NOT sent!")
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    print(f"[INFO] SMTP email backend active. Sending from: {EMAIL_HOST_USER} via {EMAIL_HOST}:{EMAIL_PORT}")
