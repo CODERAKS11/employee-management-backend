@@ -1206,6 +1206,7 @@
         }
 
         function renderHistoryTable(logs) {
+            window.globalHistoryLogs = logs;
             const table = getDataTable('#tableHistory', {
                 order: [[3, 'desc']],
                 columnDefs: [
@@ -1226,7 +1227,7 @@
                 return;
             }
 
-            logs.forEach(log => {
+            logs.forEach((log, index) => {
                 const formattedTime = log.sent_at ? new Date(log.sent_at).toLocaleString() : '--';
                 const sortableTime = log.sent_at ? `<span class="d-none">${log.sent_at}</span>${formattedTime}` : `<span class="d-none">0000-00-00</span>--`;
                 const stateBadge = log.status === 'Sent' ? 
@@ -1238,7 +1239,7 @@
                     `<div class="text-truncate" style="max-width:250px;"><b>${log.subject}</b> - ${log.message}</div>`,
                     stateBadge,
                     sortableTime,
-                    `<button class="btn btn-light btn-sm text-primary" onclick="retrySingleLog('${log.recipient_email}', '${log.subject.replace(/'/g, "\\'")}', '${log.message.replace(/'/g, "\\'")}', ${log.employee})"><i data-lucide="refresh-cw" style="width:12px;"></i> Re-send</button>`
+                    `<button class="btn btn-light btn-sm text-primary" onclick="retrySingleLogByIndex(${index})"><i data-lucide="refresh-cw" style="width:12px;"></i> Re-send</button>`
                 ]);
             });
             table.draw();
@@ -1247,13 +1248,25 @@
             lucide.createIcons();
         }
 
-        function retrySingleLog(recipientEmail, subject, message, employeeId) {
+        window.retrySingleLogByIndex = function(index) {
+            const log = window.globalHistoryLogs[index];
+            if (!log) return;
+            
             const payload = {
-                employee: employeeId,
-                recipient_email: recipientEmail,
-                subject: subject,
-                message: message
+                employee: log.employee,
+                recipient_email: log.recipient_email,
+                subject: log.subject,
+                message: log.message
             };
+
+            Swal.fire({
+                title: 'Retrying Transmission...',
+                html: `Attempting recovery dispatch to <b>${log.recipient_email}</b>.`,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
 
             $.ajax({
                 url: API_BASE + 'emails/',
@@ -1261,10 +1274,12 @@
                 data: JSON.stringify(payload),
                 contentType: 'application/json',
                 success: function() {
+                    Swal.close();
                     Swal.fire('Resent Successfully', 'The email has been queued and sent.', 'success');
                     loadHistoryLogs();
                 },
                 error: function(xhr) {
+                    Swal.close();
                     Swal.fire('Retry Failed', 'An error occurred during re-transmission.', 'error');
                 }
             });
