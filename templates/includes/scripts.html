@@ -1110,13 +1110,13 @@
     }
 
     // Loop and trigger individual email dispatches to backend endpoint sequentially
+    // Dispatches the entire batch in a single HTTP request to optimized backend batch_send endpoint
     async function sendBatchEmails(subjectTpl, messageTpl) {
-        let successCount = 0;
         const total = selectedEmployeeIds.length;
 
         Swal.fire({
             title: 'Processing Dispatch...',
-            html: `Sent <b>0</b> of ${total} records.`,
+            html: `Sending <b>${total}</b> email templates via persistent channel...`,
             allowOutsideClick: false,
             didOpen: () => {
                 Swal.showLoading();
@@ -1126,63 +1126,46 @@
         const fileInput = document.getElementById('emailAttachment');
         const attachmentFile = (fileInput && fileInput.files.length > 0) ? fileInput.files[0] : null;
 
-        for (let i = 0; i < total; i++) {
-            const empId = selectedEmployeeIds[i];
-            const emp = globalEmployees.find(e => e.id === empId);
-            if (!emp) {
-                updateProgress(i + 1);
-                continue;
-            }
-
-            // Render dynamic text templates fields logic
-            let renderedSubject = subjectTpl.replace(/{{first_name}}/g, emp.first_name).replace(/{{last_name}}/g, emp.last_name).replace(/{{employee_id}}/g, emp.employee_id);
-
-            let renderedMessage = messageTpl.replace(/{{first_name}}/g, emp.first_name).replace(/{{last_name}}/g, emp.last_name).replace(/{{employee_id}}/g, emp.employee_id);
-
-            const formData = new FormData();
-            formData.append('employee', emp.id);
-            formData.append('recipient_email', emp.email);
-            formData.append('subject', renderedSubject);
-            formData.append('message', renderedMessage);
-            if (attachmentFile) {
-                formData.append('attachment', attachmentFile);
-            }
-
-            try {
-                await $.ajax({
-                    url: API_BASE + 'emails/',
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false
-                });
-                successCount++;
-            } catch (err) {
-                console.error("Failed to send email to " + emp.email, err);
-            }
-
-            updateProgress(i + 1);
+        const formData = new FormData();
+        selectedEmployeeIds.forEach(id => {
+            formData.append('employees', id);
+        });
+        formData.append('subject', subjectTpl);
+        formData.append('message', messageTpl);
+        if (attachmentFile) {
+            formData.append('attachment', attachmentFile);
         }
 
-        Swal.close();
-        Swal.fire({
-            title: 'Transmission Complete',
-            text: `Successfully dispatched ${successCount} out of ${total} emails.`,
-            icon: successCount === total ? 'success' : 'warning'
-        });
+        try {
+            const response = await $.ajax({
+                url: API_BASE + 'emails/batch_send/',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false
+            });
+
+            Swal.close();
+            Swal.fire({
+                title: 'Transmission Complete',
+                text: `Successfully dispatched ${response.success_count} out of ${response.total_count} emails.`,
+                icon: response.success_count === response.total_count ? 'success' : 'warning'
+            });
+        } catch (err) {
+            console.error("Batch dispatch failed", err);
+            Swal.close();
+            Swal.fire({
+                title: 'Transmission Failed',
+                text: 'An error occurred during the batch transmission. Check SMTP settings.',
+                icon: 'error'
+            });
+        }
 
         // Reset fields
         selectedEmployeeIds = [];
         updateSelectedCountUI();
         $('.employee-checkbox').prop('checked', false);
         $('#formSendMail')[0].reset();
-
-        function updateProgress(processed) {
-            const b = Swal.getHtmlContainer() ? Swal.getHtmlContainer().querySelector('b') : null;
-            if (b) {
-                b.textContent = processed;
-            }
-        }
     }
 
     // ==================== HISTORY LOGS MODULE ====================
